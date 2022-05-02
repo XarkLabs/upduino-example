@@ -62,7 +62,7 @@ ICEPACK := icepack
 # Use iceprog.exe under WSL (due to USB issues with Linux utlity)
 # NOTE: Windows may still require Zadig driver installation. For more info see
 # https://gojimmypi.blogspot.com/2020/12/ice40-fpga-programming-with-wsl-and.html
-ifneq ($(shell uname -a | grep Microsoft),)
+ifneq ($(shell uname -a | grep -i Microsoft),)
 ICEPROG := iceprog.exe
 else
 ICEPROG := iceprog

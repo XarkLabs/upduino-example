@@ -16,7 +16,7 @@ See
 [Gojimmypi's Blog](https://gojimmypi.blogspot.com/2020/12/ice40-fpga-programming-with-wsl-and.html)
 
 You can get Windows `iceprog` and related executables from
-[fpga-toolchain](https://github.com/YosysHQ/fpga-toolchain/releases/tag/nightly-20210318)
+[fpga-toolchain-progtools](https://github.com/YosysHQ/fpga-toolchain/releases/download/nightly-20210318/fpga-toolchain-progtools-windows_amd64-nightly-20210318.zip) (This are older but nice static binaries)
 
 ### Linux
 
