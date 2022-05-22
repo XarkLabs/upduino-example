@@ -42,6 +42,9 @@ logic           red, green, blue;   // internal LED signals
 // === clock setup
 
 `ifdef EXT_CLK      // if EXT_CLK (12M connected to gpio_20 or OSC jumper shorted)
+logic unused_ext_clk;
+assign unused_ext_clk = &{ 1'b0, gpio_20, (CLOCK_HZ == 0 ? 1'b0 : 1'b0) };
+
 always_comb     clk = gpio_20;
 `else              // else !EXT_CLK
 `ifdef SYNTHESIS   // if synthesizing design for FPGA
@@ -67,6 +70,10 @@ initial begin
     forever                 // forever loop
         #(NS_48M)   clk = !clk; // delay ns, then toggle clock
 end
+
+logic unused_ext_clk;
+assign unused_ext_clk = &{ 1'b0, gpio_20};
+
 /* verilator lint_on STMTDLY */
 /* verilator lint_on INFINITELOOP */
 `endif              // end !SYNTHESIS

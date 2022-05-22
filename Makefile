@@ -32,6 +32,9 @@ OUTNAME := example
 # Name of the "top" module for simulation test bed (in ".sv" file with same name)
 TBTOP := example_tb
 
+# Name of C++ top simulation module (for Verilator)
+VTOP := example_top
+
 # Name of simulation output file
 TBOUTNAME := example_tb
 
@@ -68,7 +71,6 @@ else
 ICEPROG := iceprog
 endif
 
-
 # Yosys synthesis options
 # ("ultraplus" device, enable DSP inferrence and explicitly set top module name)
 YOSYS_SYNTH_OPTS := -device u -dsp -top $(TOP)
@@ -86,7 +88,10 @@ VERILATOR := verilator
 # e.g. -Wno-UNUSED
 # A nice guide to the warnings, what they mean and how to appese them is https://verilator.org/guide/latest/warnings.html
 # (SystemVerilog files, language versions, include directory and error & warning options)
-VERILATOR_OPTS := --sv --language 1800-2012 -I$(SRCDIR) -Werror-UNUSED -Wall -Wno-DECLFILENAME
+VERILATOR_ARGS := --sv --trace-fst -Mdir obj_dir --language 1800-2012 -I$(SRCDIR) -Werror-UNUSED -Wall -Wno-DECLFILENAME
+
+# Verillator C++ simulation driver
+CSRC := example_vsim.cpp
 
 # Icarus Verilog tool
 IVERILOG := iverilog
@@ -149,6 +154,15 @@ irun: $(OUTDIR)/$(TBOUTNAME) $(MAKEFILE_LIST)
 	$(OUTDIR)/$(TBOUTNAME) -fst
 	@echo === Simulation done, use "gtkwave logs/$(TBTOP).fst" to view waveforms ===
 
+# build native simulation executable
+vsim: obj_dir/V$(VTOP) $(MAKEFILE_LIST)
+	@echo === Completed building Verilator simulation, use \"make vrun\" to run.
+
+# run Verilator to build and run native simulation executable
+vrun: obj_dir/V$(VTOP) $(MAKEFILE_LIST)
+	@mkdir -p $(LOGS)
+	obj_dir/V$(VTOP) $(VRUN_TESTDATA)
+
 # use Icarus Verilog to build vvp simulation executable
 $(OUTDIR)/$(TBOUTNAME): $(TBTOP).sv $(SRC) $(MAKEFILE_LIST)
 	@echo === Building simulation ===
@@ -156,6 +170,11 @@ $(OUTDIR)/$(TBOUTNAME): $(TBTOP).sv $(SRC) $(MAKEFILE_LIST)
 	@rm -f $@
 	$(VERILATOR) $(VERILATOR_ARGS) -Wno-STMTDLY --lint-only $(DEFINES) -v $(TECH_LIB) --top-module $(TBTOP) $(TBTOP).sv $(SRC)
 	$(IVERILOG) $(IVERILOG_ARGS) $(DEFINES) -o $@ $(TBTOP).sv $(SRC)
+
+# use Verilator to build native simulation executable
+obj_dir/V$(VTOP): $(CSRC) $(INC) $(SRC) $(MAKEFILE_LIST)
+	$(VERILATOR) $(VERILATOR_ARGS) --cc --exe --trace  $(DEFINES) -DEXT_CLK $(CFLAGS) $(LDFLAGS) --top-module $(VTOP) $(TECH_LIB) $(SRC) $(CSRC)
+	cd obj_dir && make -f V$(VTOP).mk
 
 # synthesize SystemVerilog and create json description
 $(OUTDIR)/$(OUTNAME).json: $(SRC) $(INC) $(MAKEFILE_LIST)
@@ -187,7 +206,7 @@ $(OUTDIR)/$(OUTNAME).bin: $(OUTDIR)/$(OUTNAME).asc $(MAKEFILE_LIST)
 
 # delete all targets that will be re-generated
 clean:
-	rm -f $(OUTDIR)/$(OUTNAME).bin $(OUTDIR)/$(OUTNAME).json $(OUTDIR)/$(OUTNAME).asc $(OUTDIR)/$(TBOUTNAME)
+	rm -f $(OUTDIR)/$(OUTNAME).bin $(OUTDIR)/$(OUTNAME).json $(OUTDIR)/$(OUTNAME).asc $(OUTDIR)/$(TBOUTNAME) $(wildcard obj_dir/*)
 
 # prevent make from deleting any intermediate files
 .SECONDARY:
