@@ -95,6 +95,7 @@ CSRC := example_vsim.cpp
 
 # Icarus Verilog tool
 IVERILOG := iverilog
+VVP := vvp
 # Icarus Verilog options
 # (language version, include directory, library directory, warning & error options)
 IVERILOG_ARGS := -g2012 -I$(SRCDIR) -Wall -Wno-portbind -l$(TECH_LIB)
@@ -151,7 +152,7 @@ isim: $(OUTDIR)/$(TBOUTNAME) $(TBTOP).sv $(SRC) $(MAKEFILE_LIST)
 # use Icarus Verilog to run simulation executable
 irun: $(OUTDIR)/$(TBOUTNAME) $(MAKEFILE_LIST)
 	@echo === Running simulation ===
-	$(OUTDIR)/$(TBOUTNAME) -fst
+	$(VVP) $(OUTDIR)/$(TBOUTNAME) -fst
 	@echo === Simulation done, use "gtkwave logs/$(TBTOP).fst" to view waveforms ===
 
 # build native simulation executable
