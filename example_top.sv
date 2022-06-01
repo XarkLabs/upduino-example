@@ -19,15 +19,18 @@
 
 module example_top (
     // outputs
+    output      logic   spi_ssn,    // SPI flash CS, hold high to prevent UART conflict
     output      logic   led_red,    // red
     output      logic   led_green,  // green
     output      logic   led_blue,   // blue
     // inputs
-    input       logic   gpio_2,     // optional red external active-low "button"
-    input       logic   gpio_46,    // optional green external active-low "button"
-    input       logic   gpio_47,    // optional blue external active-low "button"
+    input  wire logic   gpio_2,     // optional red external active-low "button"
+    input  wire logic   gpio_46,    // optional green external active-low "button"
+    input  wire logic   gpio_47,    // optional blue external active-low "button"
     input  wire logic   gpio_20     // optional external clock input
 );
+
+always_comb spi_ssn     = 1'b1;     // deselect SPI flash (pins shared with UART)
 
 // clock signals
 localparam      CLOCK_HZ    = 12_000_000;   // clock frequency in Hz
