@@ -14,11 +14,7 @@
 
 #define VM_TRACE 1
 #define USE_FST 1               // FST format saves a lot of disk space vs older VCD
-#if USE_FST
 #include "verilated_fst_c.h" // for VM_TRACE
-#else
-#include "verilated_vcd_c.h" // for VM_TRACE
-#endif
 
 #define LOGDIR "logs/"
 
@@ -88,15 +84,9 @@ int main(int argc, char **argv)
     Vexample_top *top = new Vexample_top;
 
 #if VM_TRACE
-#if USE_FST
     const auto trace_path = LOGDIR "example_vsim.fst";
     logonly_printf("Writing FST waveform file to \"%s\"...\n", trace_path);
     VerilatedFstC *tfp = new VerilatedFstC;
-#else
-    const auto trace_path = LOGDIR "example_vsim.vcd";
-    logonly_printf("Writing VCD waveform file to \"%s\"...\n", trace_path);
-    VerilatedVcdC *tfp = new VerilatedVcdC;
-#endif
 
     top->trace(tfp, 99); // trace to heirarchal depth of 99
     tfp->open(trace_path);

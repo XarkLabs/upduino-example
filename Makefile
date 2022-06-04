@@ -47,9 +47,6 @@ DEVICE := up5k
 # UPduino FPGA package
 PACKAGE := sg48
 
-# Verilog source directories
-VPATH := $(SRCDIR)
-
 # Verilog source files for design (with TOP module first and no TBTOP)
 SRC := $(SRCDIR)/$(TOP).sv $(filter-out $(SRCDIR)/$(TBTOP).sv,$(filter-out $(SRCDIR)/$(TOP).sv,$(wildcard $(SRCDIR)/*.sv)))
 
@@ -72,10 +69,8 @@ ICEPROG := iceprog
 endif
 
 # Yosys synthesis options
-# ("ultraplus" device, enable DSP inferrence and explicitly set top module name)
-YOSYS_SYNTH_OPTS := -device u -dsp -top $(TOP)
-# NOTE: Options that can often produce a more "optimal" size/speed for design, but slower:
-#       YOSYS_SYNTH_ARGS := -device u -dsp -abc9 -top $(TOP)
+# ("ultraplus" device, enable DSP inferrence with ABC9 processing and explicitly set top module name)
+YOSYS_SYNTH_OPTS := -device u -dsp -abc9 -top $(TOP)
 
 # Invokes yosys-config to find the proper path to the iCE40 simulation library
 TECH_LIB := $(shell $(YOSYS_CONFIG) --datdir/ice40/cells_sim.v)
@@ -88,7 +83,8 @@ VERILATOR := verilator
 # e.g. -Wno-UNUSED
 # A nice guide to the warnings, what they mean and how to appese them is https://verilator.org/guide/latest/warnings.html
 # (SystemVerilog files, language versions, include directory and error & warning options)
-VERILATOR_ARGS := --sv --trace-fst -Mdir obj_dir --language 1800-2012 -I$(SRCDIR) -Werror-UNUSED -Wall -Wno-DECLFILENAME
+#VERILATOR_OPTS := -sv --language 1800-2012 -I$(SRCDIR) -Werror-UNUSED -Wall -Wno-DECLFILENAME
+VERILATOR_OPTS := -sv --language 1800-2012 --trace-fst -I$(SRCDIR) -Werror-UNUSED -Wall -Wno-DECLFILENAME
 
 # Verillator C++ simulation driver
 CSRC := example_vsim.cpp
@@ -98,15 +94,15 @@ IVERILOG := iverilog
 VVP := vvp
 # Icarus Verilog options
 # (language version, include directory, library directory, warning & error options)
-IVERILOG_ARGS := -g2012 -I$(SRCDIR) -Wall -Wno-portbind -l$(TECH_LIB)
+IVERILOG_OPTS := -g2012 -I$(SRCDIR) -Wall -Wno-portbind -l$(TECH_LIB)
 
 # nextpnr iCE40 tool
 NEXTPNR := nextpnr-ice40
 # nextpnr-ice40 options
 # (use "heap" placer)
-NEXTPNR_ARGS := --placer heap
+NEXTPNR_OPTS := --placer heap
 # NOTE: Options that can often produce a more "optimal" size/speed for design, but slower:
-#       NEXTPNR_ARGS := --promote-logic --opt-timing --placer heap
+#       NEXTPNR_OPTS := --promote-logic --opt-timing --placer heap
 
 # log output directory for tools (spammy, but useful detailed info)
 LOGS := logs
@@ -141,7 +137,7 @@ prog: $(OUTDIR)/$(OUTNAME).bin
 count: $(SRC) $(INC) $(FONTFILES) $(MAKEFILE_LIST)
 	@echo === Couting Design Resources Used ===
 	@mkdir -p $(LOGS)
-	$(YOSYS) -l $(LOGS)/$(OUTNAME)_yosys_count.log -w ".*" -q -p 'verilog_defines $(DEFINES) ; read_verilog -I$(SRCDIR) -sv $(SRC) $(FLOW3) ; synth_ice40 $(YOSYS_SYNTH_ARGS) -noflatten'
+	$(YOSYS) -l $(LOGS)/$(OUTNAME)_yosys_count.log -w ".*" -q -p 'verilog_defines $(DEFINES) ; read_verilog -I$(SRCDIR) -sv $(SRC) $(FLOW3) ; synth_ice40 $(YOSYS_SYNTH_OPTS) -noflatten'
 	@sed -n '/Printing statistics/,/Executing CHECK pass/p' $(LOGS)/$(OUTNAME)_yosys_count.log | sed '$$d'
 	@echo === See $(LOGS)/$(OUTNAME)_yosys_count.log for resource use details ===
 
@@ -169,12 +165,12 @@ $(OUTDIR)/$(TBOUTNAME): $(TBTOP).sv $(SRC) $(MAKEFILE_LIST)
 	@echo === Building simulation ===
 	@mkdir -p $(OUTDIR)
 	@rm -f $@
-	$(VERILATOR) $(VERILATOR_ARGS) -Wno-STMTDLY --lint-only $(DEFINES) -v $(TECH_LIB) --top-module $(TBTOP) $(TBTOP).sv $(SRC)
-	$(IVERILOG) $(IVERILOG_ARGS) $(DEFINES) -o $@ $(TBTOP).sv $(SRC)
+	$(VERILATOR) $(VERILATOR_OPTS) -Wno-STMTDLY --lint-only $(DEFINES) -v $(TECH_LIB) --top-module $(TBTOP) $(TBTOP).sv $(SRC)
+	$(IVERILOG) $(IVERILOG_OPTS) $(DEFINES) -o $@ $(TBTOP).sv $(SRC)
 
 # use Verilator to build native simulation executable
 obj_dir/V$(VTOP): $(CSRC) $(INC) $(SRC) $(MAKEFILE_LIST)
-	$(VERILATOR) $(VERILATOR_ARGS) --cc --exe --trace  $(DEFINES) -DEXT_CLK $(CFLAGS) $(LDFLAGS) --top-module $(VTOP) $(TECH_LIB) $(SRC) $(CSRC)
+	$(VERILATOR) $(VERILATOR_OPTS) --cc --exe --trace  $(DEFINES) -DEXT_CLK $(CFLAGS) $(LDFLAGS) --top-module $(VTOP) $(TECH_LIB) $(SRC) $(CSRC)
 	cd obj_dir && make -f V$(VTOP).mk
 
 # synthesize SystemVerilog and create json description
@@ -183,15 +179,15 @@ $(OUTDIR)/$(OUTNAME).json: $(SRC) $(INC) $(MAKEFILE_LIST)
 	@rm -f $@
 	@mkdir -p $(OUTDIR)
 	@mkdir -p $(LOGS)
-	$(VERILATOR) $(VERILATOR_ARGS) --lint-only $(DEFINES) --top-module $(TOP) $(TECH_LIB) $(SRC) 2>&1 | tee $(LOGS)/$(OUTNAME)_verilator.log
-	$(YOSYS) -l $(LOGS)/$(OUTNAME)_yosys.log -w ".*" -q -p 'verilog_defines $(DEFINES) ; read_verilog -I$(SRCDIR) -sv $(SRC) $(FLOW3) ; synth_ice40 $(YOSYS_SYNTH_ARGS) -json $@'
+	$(VERILATOR) $(VERILATOR_OPTS) --lint-only $(DEFINES) --top-module $(TOP) $(TECH_LIB) $(SRC) 2>&1 | tee $(LOGS)/$(OUTNAME)_verilator.log
+	$(YOSYS) -l $(LOGS)/$(OUTNAME)_yosys.log -w ".*" -q -p 'verilog_defines $(DEFINES) ; read_verilog -I$(SRCDIR) -sv $(SRC) $(FLOW3) ; synth_ice40 $(YOSYS_SYNTH_OPTS) -json $@'
 
 # make ASCII bitstream from JSON description and device parameters
 $(OUTDIR)/$(OUTNAME).asc: $(OUTDIR)/$(OUTNAME).json $(PIN_DEF) $(MAKEFILE_LIST)
 	@rm -f $@
 	@mkdir -p $(LOGS)
 	@mkdir -p $(OUTDIR)
-	$(NEXTPNR) -l $(LOGS)/$(OUTNAME)_nextpnr.log -q $(NEXTPNR_ARGS) --$(DEVICE) --package $(PACKAGE) --json $< --pcf $(PIN_DEF) --asc $@
+	$(NEXTPNR) -l $(LOGS)/$(OUTNAME)_nextpnr.log -q $(NEXTPNR_OPTS) --$(DEVICE) --package $(PACKAGE) --json $< --pcf $(PIN_DEF) --asc $@
 	@echo === Synthesis stats for $(OUTNAME) on $(DEVICE) === | tee $(LOGS)/$(OUTNAME)_stats.txt
 	@-tabbyadm version | grep "Package" | tee -a $(LOGS)/$(OUTNAME)_stats.txt
 	@$(YOSYS) -V 2>&1 | tee -a $(LOGS)/$(OUTNAME)_stats.txt
