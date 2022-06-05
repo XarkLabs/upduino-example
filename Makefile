@@ -47,8 +47,8 @@ DEVICE := up5k
 # UPduino FPGA package
 PACKAGE := sg48
 
-# Verilog source files for design (with TOP module first and no TBTOP)
-SRC := $(SRCDIR)/$(TOP).sv $(filter-out $(SRCDIR)/$(TBTOP).sv,$(filter-out $(SRCDIR)/$(TOP).sv,$(wildcard $(SRCDIR)/*.sv)))
+# Verilog source files for design (with no TOP or TBTOP module)
+SRC := $(filter-out $(SRCDIR)/$(TBTOP).sv,$(filter-out $(SRCDIR)/$(TOP).sv,$(wildcard $(SRCDIR)/*.sv)))
 
 # Verilog include files for design
 INC := $(wildcard $(SRCDIR)/*.svh)
@@ -134,22 +134,23 @@ prog: $(OUTDIR)/$(OUTNAME).bin
 	$(ICEPROG) -d i:0x0403:0x6014 $(OUTDIR)/$(OUTNAME).bin
 
 # run Yosys with "noflatten", which will produce a resource count per module
-count: $(SRC) $(INC) $(FONTFILES) $(MAKEFILE_LIST)
+count: $(SRCDIR)/$(TOP).sv $(SRC) $(INC) $(FONTFILES) $(MAKEFILE_LIST)
 	@echo === Couting Design Resources Used ===
 	@mkdir -p $(LOGS)
-	$(YOSYS) -l $(LOGS)/$(OUTNAME)_yosys_count.log -w ".*" -q -p 'verilog_defines $(DEFINES) ; read_verilog -I$(SRCDIR) -sv $(SRC) $(FLOW3) ; synth_ice40 $(YOSYS_SYNTH_OPTS) -noflatten'
+	$(YOSYS) -l $(LOGS)/$(OUTNAME)_yosys_count.log -w ".*" -q -p 'verilog_defines $(DEFINES) ; read_verilog -I$(SRCDIR) -sv $(SRCDIR)/$(TOP).sv $(SRC) ; synth_ice40 $(YOSYS_SYNTH_OPTS) -noflatten'
 	@sed -n '/Printing statistics/,/Executing CHECK pass/p' $(LOGS)/$(OUTNAME)_yosys_count.log | sed '$$d'
 	@echo === See $(LOGS)/$(OUTNAME)_yosys_count.log for resource use details ===
 
 # use Icarus Verilog to build and run simulation executable
-isim: $(OUTDIR)/$(TBOUTNAME) $(TBTOP).sv $(SRC) $(MAKEFILE_LIST)
-	@echo === Simulation files built, use \"make irun\" to run ===
+isim: $(OUTDIR)/$(TBOUTNAME) $(SRCDIR)/$(TBTOP).sv $(SRC) $(MAKEFILE_LIST)
+	@echo === Icarus Verilog files built, use \"make irun\" to run ===
 
 # use Icarus Verilog to run simulation executable
 irun: $(OUTDIR)/$(TBOUTNAME) $(MAKEFILE_LIST)
 	@echo === Running simulation ===
+	@mkdir -p $(LOGS)
 	$(VVP) $(OUTDIR)/$(TBOUTNAME) -fst
-	@echo === Simulation done, use "gtkwave logs/$(TBTOP).fst" to view waveforms ===
+	@echo === Icarus Verilog simulation done, use "gtkwave logs/$(TBTOP).fst" to view waveforms ===
 
 # build native simulation executable
 vsim: obj_dir/V$(VTOP) $(MAKEFILE_LIST)
@@ -161,33 +162,35 @@ vrun: obj_dir/V$(VTOP) $(MAKEFILE_LIST)
 	obj_dir/V$(VTOP) $(VRUN_TESTDATA)
 
 # use Icarus Verilog to build vvp simulation executable
-$(OUTDIR)/$(TBOUTNAME): $(TBTOP).sv $(SRC) $(MAKEFILE_LIST)
+$(OUTDIR)/$(TBOUTNAME): $(SRCDIR)/$(TBTOP).sv $(SRC) $(MAKEFILE_LIST)
 	@echo === Building simulation ===
 	@mkdir -p $(OUTDIR)
 	@rm -f $@
-	$(VERILATOR) $(VERILATOR_OPTS) -Wno-STMTDLY --lint-only $(DEFINES) -v $(TECH_LIB) --top-module $(TBTOP) $(TBTOP).sv $(SRC)
-	$(IVERILOG) $(IVERILOG_OPTS) $(DEFINES) -o $@ $(TBTOP).sv $(SRC)
+	$(VERILATOR) $(VERILATOR_OPTS) -Wno-STMTDLY --lint-only $(DEFINES) -v $(TECH_LIB) --top-module $(TBTOP) $(SRCDIR)/$(TBTOP).sv $(SRC)
+	$(IVERILOG) $(IVERILOG_OPTS) $(DEFINES) -o $@ $(SRCDIR)/$(TBTOP).sv $(SRC)
 
 # use Verilator to build native simulation executable
-obj_dir/V$(VTOP): $(CSRC) $(INC) $(SRC) $(MAKEFILE_LIST)
-	$(VERILATOR) $(VERILATOR_OPTS) --cc --exe --trace  $(DEFINES) -DEXT_CLK $(CFLAGS) $(LDFLAGS) --top-module $(VTOP) $(TECH_LIB) $(SRC) $(CSRC)
+obj_dir/V$(VTOP): $(CSRC) $(INC) $(SRCDIR)/$(TOP).sv $(SRC) $(MAKEFILE_LIST)
+	$(VERILATOR) $(VERILATOR_OPTS) --cc --exe --trace  $(DEFINES) -DEXT_CLK $(CFLAGS) $(LDFLAGS) --top-module $(VTOP) $(TECH_LIB) $(SRCDIR)/$(TOP).sv $(SRC) $(CSRC)
 	cd obj_dir && make -f V$(VTOP).mk
 
 # synthesize SystemVerilog and create json description
-$(OUTDIR)/$(OUTNAME).json: $(SRC) $(INC) $(MAKEFILE_LIST)
+$(OUTDIR)/$(OUTNAME).json: $(SRCDIR)/$(TOP).sv $(SRC) $(INC) $(MAKEFILE_LIST)
 	@echo === Synthesizing design ===
 	@rm -f $@
 	@mkdir -p $(OUTDIR)
 	@mkdir -p $(LOGS)
-	$(VERILATOR) $(VERILATOR_OPTS) --lint-only $(DEFINES) --top-module $(TOP) $(TECH_LIB) $(SRC) 2>&1 | tee $(LOGS)/$(OUTNAME)_verilator.log
-	$(YOSYS) -l $(LOGS)/$(OUTNAME)_yosys.log -w ".*" -q -p 'verilog_defines $(DEFINES) ; read_verilog -I$(SRCDIR) -sv $(SRC) $(FLOW3) ; synth_ice40 $(YOSYS_SYNTH_OPTS) -json $@'
+	$(VERILATOR) $(VERILATOR_OPTS) --lint-only $(DEFINES) --top-module $(TOP) $(TECH_LIB) $(SRCDIR)/$(TOP).sv $(SRC) 2>&1 | tee $(LOGS)/$(OUTNAME)_verilator.log
+	$(YOSYS) -l $(LOGS)/$(OUTNAME)_yosys.log -w ".*" -q -p 'verilog_defines $(DEFINES) ; read_verilog -I$(SRCDIR) -sv $(SRCDIR)/$(TOP).sv $(SRC) ; synth_ice40 $(YOSYS_SYNTH_OPTS) -json $@'
 
-# make ASCII bitstream from JSON description and device parameters
-$(OUTDIR)/$(OUTNAME).asc: $(OUTDIR)/$(OUTNAME).json $(PIN_DEF) $(MAKEFILE_LIST)
+# make BIN bitstream from JSON description and device parameters
+$(OUTDIR)/$(OUTNAME).bin: $(OUTDIR)/$(OUTNAME).json $(PIN_DEF) $(MAKEFILE_LIST)
 	@rm -f $@
 	@mkdir -p $(LOGS)
 	@mkdir -p $(OUTDIR)
-	$(NEXTPNR) -l $(LOGS)/$(OUTNAME)_nextpnr.log -q $(NEXTPNR_OPTS) --$(DEVICE) --package $(PACKAGE) --json $< --pcf $(PIN_DEF) --asc $@
+	$(NEXTPNR) -l $(LOGS)/$(OUTNAME)_nextpnr.log -q $(NEXTPNR_OPTS) --$(DEVICE) --package $(PACKAGE) --json $< --pcf $(PIN_DEF) --asc $(OUTDIR)/$(OUTNAME).asc
+	$(ICEPACK) $(OUTDIR)/$(OUTNAME).asc $@
+	@rm $(OUTDIR)/$(OUTNAME).asc
 	@echo === Synthesis stats for $(OUTNAME) on $(DEVICE) === | tee $(LOGS)/$(OUTNAME)_stats.txt
 	@-tabbyadm version | grep "Package" | tee -a $(LOGS)/$(OUTNAME)_stats.txt
 	@$(YOSYS) -V 2>&1 | tee -a $(LOGS)/$(OUTNAME)_stats.txt
@@ -195,11 +198,6 @@ $(OUTDIR)/$(OUTNAME).asc: $(OUTDIR)/$(OUTNAME).json $(PIN_DEF) $(MAKEFILE_LIST)
 	@sed -n '/Device utilisation/,/Info: Placed/p' $(LOGS)/$(OUTNAME)_nextpnr.log | sed '$$d' | grep -v ":     0/" | tee -a $(LOGS)/$(OUTNAME)_stats.txt
 	@grep "Max frequency" $(LOGS)/$(OUTNAME)_nextpnr.log | tail -1 | tee -a $(LOGS)/$(OUTNAME)_stats.txt
 	@echo
-
-# make binary bitstream from ASCII bitstream
-$(OUTDIR)/$(OUTNAME).bin: $(OUTDIR)/$(OUTNAME).asc $(MAKEFILE_LIST)
-	@rm -f $@
-	$(ICEPACK) $< $@
 
 # delete all targets that will be re-generated
 clean:
@@ -209,4 +207,4 @@ clean:
 .SECONDARY:
 
 # inform make about "phony" convenience targets
-.PHONY: info all bin prog lint isim irun count clean
+.PHONY: info all bin prog count isim irun vsim vrun clean
