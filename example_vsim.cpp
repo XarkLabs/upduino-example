@@ -12,8 +12,9 @@
 
 #include "Vexample_top.h"
 
+// 1 to save FST waveform trace file
 #define VM_TRACE 1
-#define USE_FST 1               // FST format saves a lot of disk space vs older VCD
+
 #include "verilated_fst_c.h" // for VM_TRACE
 
 #define LOGDIR "logs/"
@@ -92,15 +93,8 @@ int main(int argc, char **argv)
     tfp->open(trace_path);
 #endif
 
-    //    top->reset_i = 1;        // start in reset
-
     while (!done && !Verilated::gotFinish())
     {
-        if (main_time == 4)
-        {
-            //            top->reset_i = 0;        // tale out of reset after 2 cycles
-        }
-
         top->gpio_20 = 1; // clock rising
         top->eval();
 
