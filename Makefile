@@ -68,8 +68,15 @@ else
 ICEPROG := iceprog
 endif
 
+# Yosys warning/error options
+# (makes "no driver" warning an error, you can also suppress spurious warnings
+# so they only appear in log file with -w, e.g. adding:  -w "tri-state"
+# would suppress the warning shown when you use 1'bZ: "Yosys has only limited
+# support for tri-state logic at the moment.")
+YOSYS_OPTS := -e "no driver"
+
 # Yosys synthesis options
-# ("ultraplus" device, enable DSP inferrence with ABC9 processing and explicitly set top module name)
+# ("ultraplus" device, enable DSP inferrence, ABC9 logic optimization and explicitly set top module name)
 YOSYS_SYNTH_OPTS := -device u -dsp -abc9 -top $(TOP)
 
 # Invokes yosys-config to find the proper path to the iCE40 simulation library
@@ -137,7 +144,7 @@ prog: $(OUTDIR)/$(OUTNAME).bin
 count: $(SRCDIR)/$(TOP).sv $(SRC) $(INC) $(FONTFILES) $(MAKEFILE_LIST)
 	@echo === Couting Design Resources Used ===
 	@mkdir -p $(LOGS)
-	$(YOSYS) -l $(LOGS)/$(OUTNAME)_yosys_count.log -w ".*" -q -p 'verilog_defines $(DEFINES) ; read_verilog -I$(SRCDIR) -sv $(SRCDIR)/$(TOP).sv $(SRC) ; synth_ice40 $(YOSYS_SYNTH_OPTS) -noflatten'
+	$(YOSYS) $(YOSYS_OPTS) -l $(LOGS)/$(OUTNAME)_yosys_count.log -q -p 'verilog_defines $(DEFINES) ; read_verilog -I$(SRCDIR) -sv $(SRCDIR)/$(TOP).sv $(SRC) ; synth_ice40 $(YOSYS_SYNTH_OPTS) -noflatten'
 	@sed -n '/Printing statistics/,/Executing CHECK pass/p' $(LOGS)/$(OUTNAME)_yosys_count.log | sed '$$d'
 	@echo === See $(LOGS)/$(OUTNAME)_yosys_count.log for resource use details ===
 
@@ -181,7 +188,7 @@ $(OUTDIR)/$(OUTNAME).json: $(SRCDIR)/$(TOP).sv $(SRC) $(INC) $(MAKEFILE_LIST)
 	@mkdir -p $(OUTDIR)
 	@mkdir -p $(LOGS)
 	$(VERILATOR) $(VERILATOR_OPTS) --lint-only $(DEFINES) --top-module $(TOP) $(TECH_LIB) $(SRCDIR)/$(TOP).sv $(SRC) 2>&1 | tee $(LOGS)/$(OUTNAME)_verilator.log
-	$(YOSYS) -l $(LOGS)/$(OUTNAME)_yosys.log -w ".*" -q -p 'verilog_defines $(DEFINES) ; read_verilog -I$(SRCDIR) -sv $(SRCDIR)/$(TOP).sv $(SRC) ; synth_ice40 $(YOSYS_SYNTH_OPTS) -json $@'
+	$(YOSYS) $(YOSYS_OPTS) -l $(LOGS)/$(OUTNAME)_yosys.log -q -p 'verilog_defines $(DEFINES) ; read_verilog -I$(SRCDIR) -sv $(SRCDIR)/$(TOP).sv $(SRC) ; synth_ice40 $(YOSYS_SYNTH_OPTS) -json $@'
 
 # make BIN bitstream from JSON description and device parameters
 $(OUTDIR)/$(OUTNAME).bin: $(OUTDIR)/$(OUTNAME).json $(PIN_DEF) $(MAKEFILE_LIST)
