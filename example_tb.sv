@@ -58,7 +58,7 @@ localparam NS_12M   =   (1_000_000_000 / 12_000_000) / 2;
 
 // toggle clock at 12 Mhz frequency
 always begin
-    #(NS_12M)   clk = !clk;
+    #(NS_12M)   clk <= !clk;
 end
 
 endmodule

@@ -72,9 +72,11 @@ initial begin
     clk = '0;               // set initial value (or it will be 'X', and !'X' is still 'X'...)
 end
 
+`ifndef SYNTHESIS           // toggle clock only in simulation
 always begin
-    #(NS_48M)   clk = !clk; // delay ns, then toggle clock
+    #(NS_48M)   clk <= !clk; // delay ns, then toggle clock
 end
+`endif
 
 logic unused_ext_clk;
 assign unused_ext_clk = &{ 1'b0, gpio_20};
