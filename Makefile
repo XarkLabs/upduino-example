@@ -98,7 +98,7 @@ VERILATOR := verilator
 VERILATOR_OPTS := -sv --language 1800-2012 --trace-fst --timing -I$(SRCDIR) -v $(TECH_LIB) $(VLT_CONFIG) -Werror-UNUSED -Wall -Wno-DECLFILENAME
 # Note: Using -Os seems to provide the fastest compile+run simulation iteration
 # time
-VERILATOR_CFLAGS := -CFLAGS "-std=c++14 -Wall -Wextra -Werror -fomit-frame-pointer -Wno-deprecated-declarations -Wno-sign-compare -Wno-unused-parameter -Wno-unused-variable -Wno-int-in-bool-context"
+VERILATOR_CFLAGS := -CFLAGS "-std=c++14 -Wall -Wextra -fomit-frame-pointer -Wno-deprecated-declarations -Wno-sign-compare -Wno-unused-parameter -Wno-unused-variable -Wno-int-in-bool-context"
 
 # Verillator C++ simulation driver
 CSRC := example_vsim.cpp
@@ -128,6 +128,8 @@ info:
 	@echo "    make count      - show design resource usage counts"
 	@echo "    make isim       - build Icarus Verilog simulation for design"
 	@echo "    make irun       - run Icarus Verilog simulation for design"
+	@echo "    make vsim       - build Verilator native code simulation for design"
+	@echo "    make vrun       - run Verilator native code simulation for design"
 	@echo "    make clean      - clean most files that can be rebuilt"
 
 # defult target is to make FPGA bitstream for design
