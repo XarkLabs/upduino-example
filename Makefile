@@ -95,10 +95,10 @@ VERILATOR := verilator
 # A nice guide to the warnings, what they mean and how to appese them is https://verilator.org/guide/latest/warnings.html
 # (SystemVerilog files, language versions, include directory and error & warning options)
 #VERILATOR_OPTS := -sv --language 1800-2012 -I$(SRCDIR) -Werror-UNUSED -Wall -Wno-DECLFILENAME
-VERILATOR_OPTS := -sv --language 1800-2012 --trace-fst --timing -I$(SRCDIR) -v $(TECH_LIB) $(VLT_CONFIG) -Werror-UNUSED -Wall -Wno-DECLFILENAME
+VERILATOR_OPTS := -sv --language 1800-2012 --trace-fst --timing -I$(SRCDIR) -v $(TECH_LIB) $(VLT_CONFIG) -Werror-UNUSED -Wall -Wno-DECLFILENAME -Wno-GENUNNAMED
 # Note: Using -Os seems to provide the fastest compile+run simulation iteration
 # time
-VERILATOR_CFLAGS := -CFLAGS "-std=c++14 -Wall -Wextra -fomit-frame-pointer -Wno-deprecated-declarations -Wno-sign-compare -Wno-unused-parameter -Wno-unused-variable -Wno-int-in-bool-context"
+VERILATOR_CFLAGS := -CFLAGS "-std=c++14 -Wall -Wextra -fomit-frame-pointer -Wno-deprecated-declarations -Wno-sign-compare -Wno-unused-parameter -Wno-unused-variable -Wno-int-in-bool-context -Wno-unused-but-set-variable"
 
 # Verillator C++ simulation driver
 CSRC := example_vsim.cpp
