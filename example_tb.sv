@@ -15,6 +15,9 @@ logic red, green, blue;             // outputs from design
 logic [2:0] button;                 // input buttons for design
 logic clk;                          // simulated 12MHz "external clock" for design
 
+logic [2:0] button_mon;             // create async signal we can pass to monitor
+assign button_mon = button;         // mirrors sync button
+
 // instantiate the design to test (unit-under-test)
 example_main uut(
                 .red_o(red),        // red output from design
@@ -35,7 +38,7 @@ initial begin
 
     button = 3'b111;    // active-low, so unpressed
    // the signals we wish to monitor (via console print)
-    $monitor("%09t: Buttons In (0=ON): %b    LEDs out (0=ON): R=%x G=%x B=%x", $realtime, button, red, green, blue);
+    $monitor("%09t: Buttons In (0=ON): %b    LEDs out (0=ON): R=%x G=%x B=%x", $realtime, button_mon, red, green, blue);
 
     #500ns;                     // run for a bit
     button = 3'b000;            // simulate press of all buttons
